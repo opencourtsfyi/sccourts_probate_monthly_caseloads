@@ -1,53 +1,81 @@
+# downloader.py
+"""
+Bronze stage: downloads raw SC Probate Estate Monthly Caseload PDF reports
+from the SC Courts website and saves them locally, untouched, as the
+preserved source artifact (Bronze tier of the Medallion architecture).
+Also logs a provenance record for every successfully downloaded file.
+"""
+
 import requests
 import time
 import random
-import os
+from pathlib import Path
 
-# Create pdfs directory if it doesn't exist
-pdfs_dir = os.path.join(os.path.dirname(__file__), 'pdfs')
-os.makedirs(pdfs_dir, exist_ok=True)
+from provenance import log_provenance
+from logging_config import get_logger
 
-# Define the year range
-start_year = 2007
-end_year = time.localtime().tm_year-1 # Dynamically set to the current year - 1. 
+logger = get_logger(__name__)
 
 
-# Loop through each year
-for year in range(start_year, end_year + 1):
-    next_year = year + 1
-    url = f"https://www.sccourts.org/media/annualReports/{year}-{next_year}/CATotalsES2.pdf"
-    headers = {'User-Agent': 'Mozilla/5.0'} # Mimic a browser user agent
-    filename = f"estate_monthly_caseload_{year}_to_{next_year}.pdf"
-    filepath = os.path.join(pdfs_dir, filename)
+def download_pdfs(output_dir, provenance_dir, start_year=2007, end_year=None):
+    """Downloads SC Probate estate monthly caseload PDFs into output_dir.
 
-    # Check if file already exists
-    if os.path.exists(filepath):
-        print(f"⏭️ Skipping: {filename} (already exists)")
-        continue
+    Each report covers a fiscal year (July through June), so the SC Courts
+    URL pattern uses two consecutive years, e.g. 2022-2023.
+    """
+    if end_year is None:
+        end_year = time.localtime().tm_year - 1  # Default to last year, since current year's report may not exist yet
 
-    success = False
-    for attempt in range(1, 4):  # Up to 3 attempts
-        try:
-            print(f"Attempt {attempt} to download: {filename}")
-            response = requests.get(url, headers=headers, timeout=10)
-            response.raise_for_status()
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-            with open(filepath, "wb") as f:
-                f.write(response.content)
-            print(f"✅ Downloaded: {filename}")
-            success = True
-            break  # Exit retry loop if successful
+    for year in range(start_year, end_year + 1):
+        next_year = year + 1
+        url = f"https://www.sccourts.org/media/annualReports/{year}-{next_year}/CATotalsES2.pdf"
+        headers = {'User-Agent': 'Mozilla/5.0'}  # Mimic a browser to avoid being blocked
+        filename = f"estate_monthly_caseload_{year}_to_{next_year}_bronze.pdf"
+        filepath = output_dir / filename
 
-        except requests.exceptions.RequestException as e:
-            print(f"⚠️ Attempt {attempt} failed for {filename}: {e}")
-            wait_time = random.uniform(1, 5)
-            print(f"⏳ Waiting {wait_time:.2f} seconds before retry...")
-            time.sleep(wait_time)
+        # Skip files already downloaded, makes reruns cheap and idempotent
+        if filepath.exists():
+            logger.info(f"⏭️ Skipping: {filename} (already exists)")
+            continue
 
-    if not success:
-        print(f"❌ Failed to download {filename} after 3 attempts.")
-    else:
-        # Wait before moving to the next file
-        delay = random.uniform(1, 5)
-        print(f"⏱️ Waiting {delay:.2f} seconds before next file...")
-        time.sleep(delay)
+        success = False
+        for attempt in range(1, 4):  # Retry up to 3 times per file
+            try:
+                logger.info(f"Attempt {attempt} to download: {filename}")
+                response = requests.get(url, headers=headers, timeout=10)
+                response.raise_for_status()  # Raises on HTTP error codes
+
+                # "wb" = write binary, since a PDF is binary data, not text
+                with open(filepath, "wb") as f:
+                    f.write(response.content)
+                logger.info(f"✅ Downloaded: {filename}")
+                success = True
+                break
+
+            except requests.exceptions.RequestException as e:
+                logger.warning(f"⚠️ Attempt {attempt} failed for {filename}: {e}")
+                wait_time = random.uniform(1, 5)  # Random delay avoids hammering the server on retries
+                time.sleep(wait_time)
+
+        if not success:
+            logger.error(f"❌ Failed to download {filename} after 3 attempts.")
+        else:
+            # Record provenance the moment a Bronze artifact exists on disk:
+            # which URL it came from, when, and its content hash
+            log_provenance(provenance_dir, stage="bronze", file_path=filepath, source_url=url)
+
+            # Polite delay between files so we don't hit the server too fast
+            delay = random.uniform(1, 5)
+            time.sleep(delay)
+
+
+# Only runs when this file is executed directly, not when imported by the orchestrator
+if __name__ == "__main__":
+    base_dir = Path(__file__).parent
+    download_pdfs(
+        base_dir / "../data/pdfs_bronze",
+        base_dir / "../data/provenance",
+    )

@@ -1,6 +1,7 @@
 # Project-specific folders
 excel/
 pdfs/
+data/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
