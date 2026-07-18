@@ -22,6 +22,15 @@ def download_pdfs(output_dir, provenance_dir, start_year=2007, end_year=None):
 
     Each report covers a fiscal year (July through June), so the SC Courts
     URL pattern uses two consecutive years, e.g. 2022-2023.
+
+    output_dir: directory the downloaded Bronze PDFs are written to (created
+                if it doesn't already exist).
+    provenance_dir: directory the provenance log (provenance_log.jsonl) is
+                     written/appended to for each successfully downloaded file.
+    start_year: first fiscal-year start year to attempt, e.g. 2007 pulls the
+                2007-2008 report.
+    end_year: last fiscal-year start year to attempt. Defaults to last
+              calendar year, since the current year's report may not exist yet.
     """
     if end_year is None:
         end_year = time.localtime().tm_year - 1  # Default to last year, since current year's report may not exist yet
@@ -76,6 +85,6 @@ def download_pdfs(output_dir, provenance_dir, start_year=2007, end_year=None):
 if __name__ == "__main__":
     base_dir = Path(__file__).parent
     download_pdfs(
-        base_dir / "../data/pdfs_bronze",
-        base_dir / "../data/provenance",
+        base_dir / "data/pdfs_bronze",
+        base_dir / "data/provenance",
     )
