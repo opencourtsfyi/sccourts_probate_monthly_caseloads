@@ -108,8 +108,8 @@ if __name__ == "__main__":
     from logging_config import get_logger
 
     base_dir = Path(__file__).parent
-    gold_csv = base_dir / "../data/cases_gold/caseloads_normalized.csv"
-    logger = get_logger(__name__, log_dir=base_dir / "../data/logs")
+    gold_csv = base_dir / "data/cases_gold/caseloads_normalized.csv"
+    logger = get_logger(__name__, log_dir=base_dir / "data/logs")
 
     issues = validate_gold_csv(gold_csv, logger=logger)
     # Non-zero exit code lets this be used as a CI/CD gate later (e.g. Issue 19's QA pipeline)
