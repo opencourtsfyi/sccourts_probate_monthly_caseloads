@@ -78,7 +78,7 @@ def extract_pdfs_to_silver(input_dir, output_dir, provenance_dir):
 if __name__ == "__main__":
     base_dir = Path(__file__).parent
     extract_pdfs_to_silver(
-        base_dir / "../data/pdfs_bronze",
-        base_dir / "../data/cases_silver",
-        base_dir / "../data/provenance",
+        base_dir / "data/pdfs_bronze",
+        base_dir / "data/cases_silver",
+        base_dir / "data/provenance",
     )
