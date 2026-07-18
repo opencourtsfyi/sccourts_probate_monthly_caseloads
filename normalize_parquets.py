@@ -217,7 +217,7 @@ def normalize_silver_to_gold(input_dir, output_dir, provenance_dir, output_filen
 if __name__ == "__main__":
     base_dir = Path(__file__).parent
     normalize_silver_to_gold(
-        base_dir / "../data/cases_silver",
-        base_dir / "../data/cases_gold",
-        base_dir / "../data/provenance",
+        base_dir / "data/cases_silver",
+        base_dir / "data/cases_gold",
+        base_dir / "data/provenance",
     )
